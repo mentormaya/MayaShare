@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- activity_main.xml -->
+
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingLeft="16dp"
+    android:paddingTop="16dp"
+    android:paddingRight="16dp"
+    android:paddingBottom="16dp"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/text_sender"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/sender"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/button_send"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/text_sender"
+        android:layout_marginTop="16dp"
+        android:text="@string/send_file" />
+
+    <TextView
+        android:id="@+id/text_receiver"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/button_send"
+        android:layout_marginTop="16dp"
+        android:text="@string/receiver"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/text_address"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/text_receiver"
+        android:layout_marginTop="16dp"
+        android:text="@string/sender_ip_address" />
+
+    <EditText
+        android:id="@+id/edit_address"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/text_address"
+        android:layout_marginTop="8dp"
+        android:inputType="text"
+        android:autofillHints="IP Address of the sender"
+        tools:ignore="LabelFor" />
+
+    <Button
+        android:id="@+id/button_receive"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/edit_address"
+        android:layout_marginTop="16dp"
+        android:text="@string/receive_file" />
+
+    <Button
+        android:id="@+id/button_discover"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/button_receive"
+        android:layout_marginTop="16dp"
+        android:text="@string/start_peer_discovery" />
+
+</RelativeLayout>

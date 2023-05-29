@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">MayaShare</string>
+    <string name="send_file">Send File</string>
+    <string name="receiver">Receiver</string>
+    <string name="sender">Sender</string>
+    <string name="start_peer_discovery">Start Peer Discovery</string>
+    <string name="receive_file">Receive File</string>
+    <string name="sender_ip_address">Sender IP Address:</string>
+    <string name="receiver">Receiver</string>
+    <string name="send_file">Send File</string>
+    <string name="sender">Sender</string>
+</resources>

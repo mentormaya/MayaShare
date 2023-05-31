@@ -1,17 +1,13 @@
 package com.example.mayashare
 
-import android.Manifest
-import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.view.View
 import android.widget.Button
 import android.widget.EditText
-import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import java.io.DataOutputStream
 import java.io.File
 import java.io.FileInputStream
@@ -21,13 +17,14 @@ import java.net.Socket
 import java.nio.charset.StandardCharsets
 
 class MainActivity : AppCompatActivity() {
-    private val BUFFER_SIZE = 4096
-    private val PORT = 5000
-    private val SEPARATOR = "<SEPARATOR>"
-    private val DISCOVERY_PORT = 5001
+    private val bufferSize = 4096
+    private val port = 5000
+    private val separator = "<SEPARATOR>"
+    private val discoveryPort = 5001
 
     private lateinit var editAddress: EditText
 
+    @RequiresApi(Build.VERSION_CODES.KITKAT)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -44,67 +41,73 @@ class MainActivity : AppCompatActivity() {
         buttonDiscover.setOnClickListener { startPeerDiscovery() }
     }
 
-    private fun sendFile() {
-        val fileChooserIntent = Intent(Intent.ACTION_GET_CONTENT)
-        fileChooserIntent.type = "*/*"
-        startActivityForResult(fileChooserIntent, 1)
+
+    private lateinit var fileSelectionLauncher: ActivityResultLauncher<String>
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // Initialize file selection launcher
+        fileSelectionLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                val selectedFilePath = getPath(uri) ?: return@registerForActivityResult
+                val file = File(selectedFilePath)
+                val fileSize = file.length()
+                val fileName = file.name
+
+                val address = editAddress.text.toString()
+
+                Thread {
+                    var socket: Socket? = null
+                    var outputStream: DataOutputStream? = null
+                    var fileInputStream: FileInputStream? = null
+
+                    try {
+                        socket = Socket(address, port)
+                        outputStream = DataOutputStream(socket.getOutputStream())
+
+                        val fileInfo = "SEND$separator$fileName$separator$fileSize"
+                        outputStream.write(fileInfo.toByteArray(StandardCharsets.UTF_8))
+
+                        fileInputStream = FileInputStream(file)
+
+                        val buffer = ByteArray(bufferSize)
+                        var bytesRead: Int
+
+                        while (fileInputStream.read(buffer).also { bytesRead = it } != -1) {
+                            outputStream.write(buffer, 0, bytesRead)
+                        }
+
+                        outputStream.flush()
+                        socket.shutdownOutput()
+
+                        val response = socket.getInputStream().bufferedReader().readLine()
+
+                        runOnUiThread {
+                            Toast.makeText(this, response, Toast.LENGTH_SHORT).show()
+                        }
+
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        runOnUiThread {
+                            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    } finally {
+                        outputStream?.close()
+                        fileInputStream?.close()
+                        socket?.close()
+                    }
+                }.start()
+            }
+        }
+
+        // Rest of the code
+        // ...
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (resultCode == RESULT_OK && requestCode == 1) {
-            val selectedFileUri: Uri = data?.data ?: return
-            val selectedFilePath = getPath(selectedFileUri) ?: return
-
-            val file = File(selectedFilePath)
-            val fileSize = file.length()
-            val fileName = file.name
-
-            val address = editAddress.text.toString()
-
-            Thread {
-                var socket: Socket? = null
-                var outputStream: DataOutputStream? = null
-                var fileInputStream: FileInputStream? = null
-
-                try {
-                    socket = Socket(address, PORT)
-                    outputStream = DataOutputStream(socket.getOutputStream())
-
-                    val fileInfo = "SEND$SEPARATOR$fileName$SEPARATOR$fileSize"
-                    outputStream.write(fileInfo.toByteArray(StandardCharsets.UTF_8))
-
-                    fileInputStream = FileInputStream(file)
-
-                    val buffer = ByteArray(BUFFER_SIZE)
-                    var bytesRead: Int
-
-                    while (fileInputStream.read(buffer).also { bytesRead = it } != -1) {
-                        outputStream.write(buffer, 0, bytesRead)
-                    }
-
-                    outputStream.flush()
-                    socket.shutdownOutput()
-
-                    val response = socket.getInputStream().bufferedReader().readLine()
-
-                    runOnUiThread {
-                        Toast.makeText(this, response, Toast.LENGTH_SHORT).show()
-                    }
-
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    runOnUiThread {
-                        Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                } finally {
-                    outputStream?.close()
-                    fileInputStream?.close()
-                    socket?.close()
-                }
-            }.start()
-        }
+    private fun sendFile() {
+        fileSelectionLauncher.launch("*/*")
     }
 
     private fun receiveFile() {
@@ -113,7 +116,7 @@ class MainActivity : AppCompatActivity() {
 
         if (savePath != null) {
             Thread {
-                val serverSocket = ServerSocket(PORT)
+                val serverSocket = ServerSocket(port)
 
                 runOnUiThread {
                     Toast.makeText(this, "Waiting for file...", Toast.LENGTH_SHORT).show()
@@ -128,7 +131,7 @@ class MainActivity : AppCompatActivity() {
                     val dataInputStream = socket.getInputStream()
                     val receivedData = dataInputStream.bufferedReader().readLine()
 
-                    val parts = receivedData.split(SEPARATOR)
+                    val parts = receivedData.split(separator)
                     val command = parts[0]
                     val fileName = parts[1]
                     val fileSize = parts[2].toLong()
@@ -137,7 +140,7 @@ class MainActivity : AppCompatActivity() {
                         val filePath = "$savePath/$fileName"
                         fileOutputStream = FileOutputStream(filePath)
 
-                        val buffer = ByteArray(BUFFER_SIZE)
+                        val buffer = ByteArray(bufferSize)
                         var bytesRead: Int
                         var progress: Long = 0
 
@@ -170,6 +173,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.KITKAT)
     private fun startPeerDiscovery() {
         Thread {
             val address = getIPAddress()
@@ -180,7 +184,7 @@ class MainActivity : AppCompatActivity() {
 
                 val discoveryMessage = "DISCOVER"
                 val buffer = discoveryMessage.toByteArray(StandardCharsets.UTF_8)
-                val packet = DatagramPacket(buffer, buffer.size, getBroadcastAddress(), DISCOVERY_PORT)
+                val packet = DatagramPacket(buffer, buffer.size, getBroadcastAddress(), discoveryPort)
                 socket.send(packet)
 
                 runOnUiThread {
